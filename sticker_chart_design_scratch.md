@@ -22,10 +22,9 @@ Sticker Table Column: Add/Remove
 
 Displaying the chart:
 
-The default chart displayed should be the current one which is first in a sorted
-list of charts in alphabetical order. A drop down menu should allow one to pick
-different charts to look at and interact with. The chart and the input should be
-seperated by a horizontal rule.
+The default chart displayed should be the first in the master list of charts.
+A drop down menu should allow one to pick different charts to look at and 
+interact with. The chart and the input should be seperated by a horizontal rule.
 
 How to input data:
 
@@ -67,8 +66,32 @@ Installation directory
   - cgi
     - *scripts
   - charts
+    - templates
     - *YYYY-MM
   - docs
     - *documentation files
   api_key.bin
   usernames_passwords
+
+Chart data:
+
+Charts are a two dimensional array with the first index representing width and
+the second index representing height. That is each data structure added to the
+first index is a column representing an item being kept track of by the chart.
+
+The first item in each column is the 'title' of the item being kept track of.
+These should only include the alphanumeric characters, dash and underscore. There
+is a further limit of 25 characters for the title.
+
+Template Data:
+
+Templates are created so that the meta-structure of the sticker chart is preserved 
+and used to populate new sticker charts at the end of the month. Templates are 
+stored in a JSON file called 'templates' inside of the charts directory. Each
+template is stored inside a master list which preserves the order of templates
+and thus the order of sticker charts.
+
+name: The name of the sticker chart that distinguishes it from other sticker 
+charts.
+
+columns: A list of columns for this chart.
