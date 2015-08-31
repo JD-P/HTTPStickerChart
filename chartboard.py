@@ -23,7 +23,8 @@ class AppMain():
         try:
             chart_file = open(chartpath)
         except IOError:
-
+            self.stock_charts_from_templates(chartpath)
+            chart_file = open(chartpath)
         chart = json.load(chart_file)
         status = '200 OK'
         response_headers = [('Content-type', 'text/plain')]
@@ -33,16 +34,17 @@ class AppMain():
 
     def stock_charts_from_templates(self, chartpath):
         """Create sticker chart(s) for the current year and month from the 
-        templates given in charts/templates."""
+        templates given in /charts/templates."""
         chart_file = open(chartpath, "w")
         current_time = datetime.datetime.now()
         days_in_month = calendar.monthrange(current_time.year, 
                                             current_time.month)[1]
-        template_directory = os.path.join(
-            os.path.split(chartpath), "templates")
-        #Broken right now, committing for others to look at
-        for day in days_in_month:
-            month_rows.append(list())
+        templatepath = os.path.join(os.path.split(chartpath), "templates")
+        with open(templatepath) as templates_file:
+            templates = json.load(templates_file)
+        for template in templates:
+            
+        
 
     def ascend_directory(self, filepath, steps):
         """Return a filepath which would correspond to ascending n <steps> of 
