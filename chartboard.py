@@ -49,9 +49,7 @@ class application():
             #os.makedirs(os.path.split(chartpath)[0], exist_ok=True)
             with open(chartpath, "w") as chart_file:
                 charts = self.stock_charts_from_templates(chartpath)
-                json_charts = json.dumps(charts)
-                chart_file.write(json_charts)
-                chart_file.flush()
+                json_charts = json.dump(charts, chart_file)
             chart_file = open(chartpath)
         charts = json.load(chart_file)
         chart = charts[0]
