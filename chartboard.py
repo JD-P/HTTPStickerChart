@@ -63,7 +63,7 @@ class application():
         current_time = datetime.datetime.now()
         days_in_month = calendar.monthrange(current_time.year, 
                                             current_time.month)[1]
-        templatepath = os.path.join(os.path.split(chartpath), "templates")
+        templatepath = os.path.join(os.path.split(chartpath)[0], "templates")
         with open(templatepath) as templates_file:
             templates = json.load(templates_file)
         for template in templates:
