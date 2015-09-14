@@ -75,6 +75,14 @@ Installation directory
 
 Chart data:
 
+There is a master list of charts which preserves the order of charts. Each actual
+chart is a dictionary with the following keys:
+
+name: The name of the sticker chart that distinguishes it from other sticker
+charts.
+
+table: The two dimensional array representing the chart.
+
 Charts are a two dimensional array with the first index representing width and
 the second index representing height. That is each data structure added to the
 first index is a column representing an item being kept track of by the chart.
@@ -94,4 +102,5 @@ and thus the order of sticker charts.
 name: The name of the sticker chart that distinguishes it from other sticker 
 charts.
 
-columns: A list of columns for this chart.
+columns: A list of column names for this chart. These are just strings 
+representing the names of columns.
