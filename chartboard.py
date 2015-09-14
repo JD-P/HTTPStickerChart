@@ -41,14 +41,22 @@ class application():
         # Access current sticker charts
         parent_directory = self.ascend_directory(__file__, 2)
         charts_directory = os.path.join(parent_directory, "charts")
+        user_directory = os.path.join(charts_directory, environ["REMOTE_USER"])
         current_chart = time.strftime("%Y-%m")
-        chartpath = os.path.join(charts_directory, current_chart)
+        chartpath = os.path.join(user_directory, current_chart)
         try:
             chart_file = open(chartpath)
         except IOError:
             #os.makedirs(os.path.split(chartpath)[0], exist_ok=True)
             with open(chartpath, "w") as chart_file:
-                charts = self.stock_charts_from_templates(chartpath)
+                try:
+                    charts = self.stock_charts_from_templates(chartpath)
+                except NonexistentTemplateFile:
+                    with open(templatepath, "w") as templates_file:
+                        json.dump(list(), templates_file)
+                    charts = self.stock_charts_from_templates(chartpath)
+                if charts == list(): # If no charts returned
+                    return FUNCTION_CALL # Return message to user asking to make one
                 json_charts = json.dump(charts, chart_file)
             chart_file = open(chartpath)
         charts = json.load(chart_file)
@@ -64,8 +72,13 @@ class application():
         days_in_month = calendar.monthrange(current_time.year, 
                                             current_time.month)[1]
         templatepath = os.path.join(os.path.split(chartpath)[0], "templates")
-        with open(templatepath) as templates_file:
-            templates = json.load(templates_file)
+        try:
+            with open(templatepath) as templates_file:
+                templates = json.load(templates_file)
+        except IOError:
+            raise NonexistentTemplateFile(templatepath)
+        if templates == list(): # Can't return a chart if there are no templates.
+            return templates
         for template in templates:
             chart = {}
             chart["name"] = template["name"]
@@ -109,6 +122,11 @@ class application():
         days_in_month = len(table[0])
         return [[column[day] for column in table] for day in days_in_month]
             
+    def no_charts_to_read(self):
+        """HTML page response generated when there are no user created charts to
+        read from their accounts chart directory."""
+        pass
+        # page_html = 
 
     def no_action_specified(self):
         """Error method called to return a web page when no action is given
@@ -141,3 +159,12 @@ class application():
             filepath = os.path.split(filepath)[0]
             steps -= 1
         return filepath
+
+class NonexistentTemplateFile(Exception):
+    """Error raised when the program attempts to open the template file and it
+    does not exist."""
+    def __init__(self, filepath="No filepath given."):
+        self.filepath = filepath
+
+    def __str__(self):
+        return repr(self.filepath)
