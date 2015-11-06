@@ -66,11 +66,12 @@ Installation directory
   - cgi
     - *scripts
   - charts
-    - templates
-    - *YYYY-MM
+    - user_account
+      - api_key.bin
+      - templates
+      - *YYYY-MM
   - docs
     - *documentation files
-  api_key.bin
   usernames_passwords
 
 Chart data:
