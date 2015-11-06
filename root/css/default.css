@@ -3,3 +3,10 @@ body {
     flex-basis: 80ch;
     justify-content: center;
     }
+
+table {
+    border: solid 2px black;
+    }
+
+td {border-top: solid 2px black; width: 50; height: 20;}
+    
