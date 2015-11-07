@@ -23,7 +23,7 @@ class application():
         """
         query_string = self.environ["QUERY_STRING"]
         if query_string == '':
-            page_html = self.do_default(self.environ)
+            response_tuple = self.do_default(self.environ)
         else:
             query_dict = self.parse_query_string(query_string)
             try:
@@ -31,9 +31,16 @@ class application():
             except KeyError:
                 yield self.no_action_specified().encode('utf-8')
             html_gen = getattr(self, "do_" + action)
-            page_html = html_gen(self.environ)
-        status = '200 OK'
-        response_headers = [('Content-type', 'text/plain')]
+            response_tuple = html_gen(self.environ)
+        page_html = response_tuple[0]
+        if response_tuple[1]:
+            status = response_tuple[1]
+        else:
+            status = '200 OK'
+        if response_tuple[2]:
+            response_headers = response_tuple[2]
+        else:
+            response_headers = [('Content-type', 'text/plain')]
         self.start(status, response_headers)
         yield page_html.encode('utf-8')
 
@@ -47,10 +54,13 @@ class application():
         charts = self.load_charts_for_user(username)
         # If no charts returned, return message to user asking to make one
         if charts == list(): 
-            return self.get_html_chunk("generic_header") + self.no_chart_could_be_read() 
+            return (self.get_html_chunk("generic_header") + 
+                    self.no_chart_could_be_read(), 
+                    '200 OK', 
+                    [('Content-type', 'text/html')]) 
         chart = charts[0]
         x_y_table = self.x_to_y(chart["table"])
-        return self.format_table(x_y_table)
+        return (self.format_table(x_y_table), '200 OK', [('Content-type', 'text/html')])
 
     def do_load_chart(self, environ):
         """Return the chart given by the query string parameter chartname.
@@ -69,9 +79,24 @@ class application():
         charts = self.load_charts_for_user(environ["REMOTE_USER"])
         for chart in charts:
             if chart["name"] == chartname:
-                return chart
-        return json.dumps(None)
+                return (chart, '200 OK', [('Content-type', 'application/json')])
+        return ("Chart not found.", '404 Not Found', [('Content-type', 'text/plain')])
 
+    def do_create_chart(self, environ):
+        """Create a chart with the name given by the query string parameter 
+        chartname.
+
+        create_chart adds a template to the templates and then creates a chart
+        instance in the charts file. Before performing this action it checks to
+        make sure that no chart with the same name already exists.
+
+        Only alphanumeric, space, dash, and underscore characters are allowed
+        inside a chart name. Chartnames have a further 75 character length limit."""
+        query_dict = self.parse_query_string(environ["QUERY_STRING"])
+        chartname = query_dict["CHARTNAME"]
+        if len(chartname) > 75:
+            pass #TODO: Make this return some kind of HTTP client error code
+        charts = self.load_charts_for_user(environ["REMOTE_USER"])
 
     def load_charts_for_user(self, username):
         """Load and return the charts file for a given user. Return empty list 
