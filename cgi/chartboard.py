@@ -92,20 +92,44 @@ class application():
 
         Only alphanumeric, space, dash, and underscore characters are allowed
         inside a chart name. Chartnames have a further 75 character length limit."""
+        if environ["REQUEST_METHOD"].upper() != "POST":
+            return ("Charts cannot be created through a GET request.",
+                    "405 Method Not Allowed", [('Content-type', 'text/plain')])
         query_dict = self.parse_query_string(environ["QUERY_STRING"])
         chartname = query_dict["CHARTNAME"]
         if len(chartname) > 75:
-            pass #TODO: Make this return some kind of HTTP client error code
+            return ("Chart names cannot be longer than 75 characters.",
+                    "400 Bad Request", [('Content-type', 'text/plain')])
+        for character in chartname:
+            if character not in ("ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
+                                 "abcdefghijklmnopqrstuvwxyz" + 
+                                 "0123456789 -_"):
+                return ("Chart names may only have alphanumeric, space, dash, " + 
+                        "and underscore characters.",
+                        '400 Bad Request', [('Content-type', 'text/plain')])
         charts = self.load_charts_for_user(environ["REMOTE_USER"])
-
+        for chart in charts:
+            if chart["name"] == chartname:
+                return ("A chart with this name already exists.", '409 Conflict',
+                        [('Content-type', 'text/plain')])
+        templates_path = self.find_templates_path(environ["REMOTE_USER"])
+        with open(templates_path) as templates_file:
+            templates = json.load(templates_file)    
+        templates.append({"name":chartname, "columns":[]})
+        with open(templates_path, "w") as templates_file:
+            json.dump(templates, templates_file)
+        chart_path = self.find_charts_path(environ["REMOTE_USER"])
+        with open(chart_path) as charts_file:
+            charts = json.load(charts_file)
+        charts.append({"name":chartname, "table":[]})
+        with open(chart_path, "w") as charts_file:
+            json.dump(charts, charts_file)
+        return ("Success", "200 OK", [('Content-type', 'text/plain')])
+            
     def load_charts_for_user(self, username):
         """Load and return the charts file for a given user. Return empty list 
         otherwise."""
-        parent_directory = self.ascend_directory(__file__, 2)
-        charts_directory = os.path.join(parent_directory, "charts")
-        user_directory = os.path.join(charts_directory, username)
-        current_chart = time.strftime("%Y-%m")
-        chartpath = os.path.join(user_directory, current_chart)
+        chartpath = self.find_charts_path(username)
         try:
             chart_file = open(chartpath)
         except IOError:
@@ -126,6 +150,17 @@ class application():
                 return charts
         charts = json.load(chart_file)
         return charts
+
+    def find_templates_path(self, username):
+        """Find and return the path to the templates file for a given username."""
+        parent_directory = self.ascend_directory(__file__, 2)
+        return os.path.join(parent_directory, "charts", username, "templates")
+
+    def find_charts_path(self, username):
+        """Find and return the path to the charts file for a given username."""
+        parent_directory = self.ascend_directory(__file__, 2)
+        current_chart = time.strftime("%Y-%m")
+        return os.path.join(parent_directory, "charts", username, current_chart)
 
     def stock_charts_from_templates(self, chartpath):
         """Create sticker chart(s) for the current year and month from the 
