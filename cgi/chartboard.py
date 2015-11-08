@@ -126,6 +126,45 @@ class application():
             json.dump(charts, charts_file)
         return ("Success", "200 OK", [('Content-type', 'text/plain')])
             
+    def do_create_column(self, environ):
+        """Create a column named by the query parameter columnname in the chart 
+        given by the query parameter chartname.
+
+        There is a 25 character limit on the length of a columns name. Only the 
+        alphanumeric, dash, and underscore characters should be in a column name."""
+        query_dict = self.parse_query_string(environ["QUERY_STRING"])
+        chartname = query_dict["CHARTNAME"]
+        column_name = query_dict["COLUMNNAME"]
+        if len(chartname) > 25:
+            return ("Column names cannot be longer than 25 characters.",
+                    "400 Bad Request", [('Content-type', 'text/plain')])
+        for character in chartname:
+            if character not in ("ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
+                                 "abcdefghijklmnopqrstuvwxyz" + 
+                                 "0123456789-_"):
+                return ("Column names may only have alphanumeric, dash, " + 
+                        "and underscore characters.",
+                        '400 Bad Request', [('Content-type', 'text/plain')])
+        templates_path = self.find_templates_path(environ["REMOTE_USER"])
+        chart_path = self.find_templates_path(environ["REMOTE_USER"])
+        with open(templates_path) as templates_file:
+            templates = json.load(templates_file)
+        with open(chart_path) as charts_file:
+            charts = json.load(charts_file)
+        for chart_template in templates:
+            if chart_template["name"] == chartname:
+                chart_template["columns"].append(column_name)
+                break
+        for chart in charts:
+            if chart["name"] == chartname:
+                chart["table"].append([column_name])
+                break
+        with open(templates_path) as templates_file:
+            json.dump(templates, templates_file)
+        with open(chart_path) as charts_file:
+            json.dump(charts, charts_file)
+        return ("Success", "200 OK", [('Content-type', 'text/plain')])
+        
     def load_charts_for_user(self, username):
         """Load and return the charts file for a given user. Return empty list 
         otherwise."""
