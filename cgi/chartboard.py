@@ -44,6 +44,8 @@ class application():
         self.start(status, response_headers)
         yield page_html.encode('utf-8')
 
+    # GET API
+
     def do_default(self, environ):
         """Display to the user the default view consisting of accessing the first
         sticker chart in the list of sticker charts and displaying it to the user."""
@@ -82,6 +84,8 @@ class application():
                 return (chart, '200 OK', [('Content-type', 'application/json')])
         return ("Chart not found.", '404 Not Found', [('Content-type', 'text/plain')])
 
+    # POST API
+
     def do_create_chart(self, environ):
         """Create a chart with the name given by the query string parameter 
         chartname.
@@ -95,8 +99,11 @@ class application():
         if environ["REQUEST_METHOD"].upper() != "POST":
             return ("Charts cannot be created through a GET request.",
                     "405 Method Not Allowed", [('Content-type', 'text/plain')])
-        query_dict = self.parse_query_string(environ["QUERY_STRING"])
-        chartname = query_dict["CHARTNAME"]
+        
+        content_length = int(environ["CONTENT_LENGTH"]) 
+        post_dict_json = environ['wsgi.input'].read(content_length).decode('utf-8') 
+        post_dict = json.loads(post_dict_json)
+        chartname = post_dict["CHARTNAME"]
         if len(chartname) > 75:
             return ("Chart names cannot be longer than 75 characters.",
                     "400 Bad Request", [('Content-type', 'text/plain')])
@@ -132,9 +139,14 @@ class application():
 
         There is a 25 character limit on the length of a columns name. Only the 
         alphanumeric, dash, and underscore characters should be in a column name."""
-        query_dict = self.parse_query_string(environ["QUERY_STRING"])
-        chartname = query_dict["CHARTNAME"]
-        column_name = query_dict["COLUMNNAME"]
+        if environ["REQUEST_METHOD"].upper() != "POST":
+            return ("Columns cannot be created through a GET request.",
+                    "405 Method Not Allowed", [('Content-type', 'text/plain')])
+        content_length = int(environ["CONTENT_LENGTH"])
+        post_dict_json = environ['wsgi.input'].read(content_length).decode('utf-8')
+        post_dict = json.loads(post_dict_json)
+        chartname = post_dict["CHARTNAME"]
+        column_name = post_dict["COLUMNNAME"]
         if len(chartname) > 25:
             return ("Column names cannot be longer than 25 characters.",
                     "400 Bad Request", [('Content-type', 'text/plain')])
@@ -146,7 +158,7 @@ class application():
                         "and underscore characters.",
                         '400 Bad Request', [('Content-type', 'text/plain')])
         templates_path = self.find_templates_path(environ["REMOTE_USER"])
-        chart_path = self.find_templates_path(environ["REMOTE_USER"])
+        chart_path = self.find_charts_path(environ["REMOTE_USER"])
         with open(templates_path) as templates_file:
             templates = json.load(templates_file)
         with open(chart_path) as charts_file:
@@ -159,11 +171,45 @@ class application():
             if chart["name"] == chartname:
                 chart["table"].append([column_name])
                 break
-        with open(templates_path) as templates_file:
+        with open(templates_path, "w") as templates_file:
             json.dump(templates, templates_file)
-        with open(chart_path) as charts_file:
+        with open(chart_path, "w") as charts_file:
             json.dump(charts, charts_file)
         return ("Success", "200 OK", [('Content-type', 'text/plain')])
+
+    def do_update_row(self, environ):
+        """Update the row representing todays entry to the sticker chart data.
+        
+        The row data is given in the query string variable row_data as a comma
+        seperated value list. The three valid values are 'white', 'lime' and 
+        'red'. These represent null true and false respectively.
+        """
+        if environ["REQUEST_METHOD"].upper() != "POST":
+            return ("Rows cannot be updated through a GET request.",
+                    "405 Method Not Allowed", [('Content-type', 'text/plain')])
+        content_length = int(environ["CONTENT_LENGTH"])
+        post_dict_json = environ['wsgi.input'].read(content_length).decode('utf-8')
+        post_dict = json.loads(post_dict_json)
+        chartname = post_dict["CHARTNAME"]
+        row_data = post_dict["ROW_DATA"].split(",")
+        charts = self.load_charts_for_user(environ["REMOTE_USER"])
+        if not charts:
+            return ("No charts in chart list.", "404 Not Found", 
+                    [('Content-type', 'text/plain')])
+        for chart in charts:
+            if chart["name"] == chartname:
+                if len(chart["table"][0]) == time.gmtime().tm_mday:
+                    day_of_month = time.gmtime().tm_mday
+                    for column in enumerate(chart["table"]):
+                        column[1][day_of_month] = row_data[column[0]]
+                else:
+                    for column in enumerate(chart["table"]):
+                        column[1].append(row_data[column[0]])
+                chart_path = self.find_charts_path(environ["REMOTE_USER"])
+                with open(chart_path, "w") as charts_file:
+                    json.dump(charts, charts_file)
+                return ("Row updated.", "200 OK", [('Content-type', 'text/plain')])
+        return ("Chart not found.", "404 Not Found", [('Content-type', 'text/plain')])
         
     def load_charts_for_user(self, username):
         """Load and return the charts file for a given user. Return empty list 
