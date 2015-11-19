@@ -2,6 +2,7 @@ import os
 import time
 import datetime
 import calendar
+import sqlite3
 import json
 
 
@@ -78,11 +79,24 @@ class application():
          characters."""
         query_dict = self.parse_query_string(environ["QUERY_STRING"])
         chartname = query_dict["CHARTNAME"]
-        charts = self.load_charts_for_user(environ["REMOTE_USER"])
-        for chart in charts:
-            if chart["name"] == chartname:
-                return (json.dumps(chart), '200 OK', [('Content-type', 'application/json')])
-        return ("Chart not found.", '404 Not Found', [('Content-type', 'text/plain')])
+        current_month = time.strftime("%Y-%m-%d")
+        month_before = (time.strftime("%Y-") + str(int(time.strftime("%m")) - 1) +
+                        time.strftime("-%d"))
+        month_after = (time.strftime("%Y-") + str(int(time.strftime("%m")) + 1) +
+                       time.strftime("-%d"))
+        database = self.load_charts_for_user(environ["REMOTE_USER"])
+        cursor = database.cursor()
+        # Test that chart exists
+        cursor.execute("select * from charts where chart=?;", (chartname,))
+        charts = cursor.fetchone()
+        if not charts:
+            return ("Chart not found.", '404 Not Found', [('Content-type', 'text/plain')])
+        cursor.execute("select * from chart_entries where chart=? AND ? < ? < ?", 
+                       (chartname, month_before, current_month, month_after))
+        entries = cursor.fetchall()
+        database.close()
+        return (json.dumps(entries), '200 OK', [('Content-type', 'application/json')])
+        
 
     # POST API
 
@@ -114,23 +128,11 @@ class application():
                 return ("Chart names may only have alphanumeric, space, dash, " + 
                         "and underscore characters.",
                         '400 Bad Request', [('Content-type', 'text/plain')])
-        charts = self.load_charts_for_user(environ["REMOTE_USER"])
-        for chart in charts:
-            if chart["name"] == chartname:
-                return ("A chart with this name already exists.", '409 Conflict',
-                        [('Content-type', 'text/plain')])
-        templates_path = self.find_templates_path(environ["REMOTE_USER"])
-        with open(templates_path) as templates_file:
-            templates = json.load(templates_file)    
-        templates.append({"name":chartname, "columns":[]})
-        with open(templates_path, "w") as templates_file:
-            json.dump(templates, templates_file)
-        chart_path = self.find_charts_path(environ["REMOTE_USER"])
-        with open(chart_path) as charts_file:
-            charts = json.load(charts_file)
-        charts.append({"name":chartname, "table":[]})
-        with open(chart_path, "w") as charts_file:
-            json.dump(charts, charts_file)
+        database = self.load_charts_for_user(environ["REMOTE_USER"])
+        cursor = database.cursor()
+        cursor.execute("insert into charts values(?);", (chartname,))
+        database.commit()
+        database.close()
         return ("Success", "200 OK", [('Content-type', 'text/plain')])
             
     def do_create_column(self, environ):
@@ -157,24 +159,16 @@ class application():
                 return ("Column names may only have alphanumeric, dash, " + 
                         "and underscore characters.",
                         '400 Bad Request', [('Content-type', 'text/plain')])
-        templates_path = self.find_templates_path(environ["REMOTE_USER"])
-        chart_path = self.find_charts_path(environ["REMOTE_USER"])
-        with open(templates_path) as templates_file:
-            templates = json.load(templates_file)
-        with open(chart_path) as charts_file:
-            charts = json.load(charts_file)
-        for chart_template in templates:
-            if chart_template["name"] == chartname:
-                chart_template["columns"].append(column_name)
-                break
-        for chart in charts:
-            if chart["name"] == chartname:
-                chart["table"].append([column_name])
-                break
-        with open(templates_path, "w") as templates_file:
-            json.dump(templates, templates_file)
-        with open(chart_path, "w") as charts_file:
-            json.dump(charts, charts_file)
+        database = self.load_charts_for_user(environ["REMOTE_USER"])
+        cursor = database.cursor()
+        # Test to make sure that chartname is in charts table
+        cursor.execute("select * from charts where chart=?;", (chartname,))
+        charts = cursor.fetchone()
+        if not charts:
+            return ("Chart not found.", "404 Not Found", [('Content-type', 'text/plain')])
+        cursor.execute("insert into templates values(?, ?);", (chartname, column_name))
+        database.commit()
+        database.close()
         return ("Success", "200 OK", [('Content-type', 'text/plain')])
 
     def do_update_row(self, environ):
@@ -192,118 +186,50 @@ class application():
         post_dict = json.loads(post_dict_json)
         chartname = post_dict["CHARTNAME"]
         row_data = post_dict["ROW_DATA"].split(",")
-        charts = self.load_charts_for_user(environ["REMOTE_USER"])
+        database = self.load_charts_for_user(environ["REMOTE_USER"])
+        cursor = database.cursor()
+        cursor.execute("select * from charts where chart=?;", (chartname,))
+        charts = cursor.fetchone()
         if not charts:
-            return ("No charts in chart list.", "404 Not Found", 
-                    [('Content-type', 'text/plain')])
-        for chart in charts:
-            if chart["name"] == chartname:
-                if len(chart["table"][0]) == time.gmtime().tm_mday:
-                    day_of_month = time.gmtime().tm_mday
-                    for column in enumerate(chart["table"]):
-                        column[1][day_of_month] = row_data[column[0]]
-                else:
-                    for column in enumerate(chart["table"]):
-                        column[1].append(row_data[column[0]])
-                chart_path = self.find_charts_path(environ["REMOTE_USER"])
-                with open(chart_path, "w") as charts_file:
-                    json.dump(charts, charts_file)
-                return ("Row updated.", "200 OK", [('Content-type', 'text/plain')])
-        return ("Chart not found.", "404 Not Found", [('Content-type', 'text/plain')])
+            return ("Chart not found.", "404 Not Found", [('Content-type', 'text/plain')])
+        cursor.execute("select * from templates where chart=?", (chartname,))
+        columns = cursor.fetchall()
+        for value in enumerate(row_data):
+            cursor.execute("insert into chart_entries values(?, ?, ?, ?);", 
+                           (chartname, columns[value[0]][1], 
+                            time.strftime("%Y-%m-%d"), value[1]))
+        database.commit()
+        database.close()                 
+        return ("Row updated.", "200 OK", [('Content-type', 'text/plain')])
+        
         
     def load_charts_for_user(self, username):
         """Load and return the charts file for a given user. Return empty list 
         otherwise."""
         chartpath = self.find_charts_path(username)
-        try:
-            chart_file = open(chartpath)
-        except IOError:
-            # If chart file nonexistent try creating default file
-            # Start by creating the directory tree for charts
-            os.makedirs(os.path.split(chartpath)[0], exist_ok=True)
-            # Open the file at the node of the tree we want and write default file
-            with open(chartpath, "w") as chart_file:
-                try:
-                    charts = self.stock_charts_from_templates(chartpath)
-                except NonexistentTemplateFile:
-                    # If no templates exist, create default templates and retry
-                    templatepath = os.path.join(os.path.split(chartpath)[0], "templates")
-                    with open(templatepath, "w") as templates_file:
-                        json.dump(list(), templates_file)
-                    charts = self.stock_charts_from_templates(chartpath)
-                json.dump(charts, chart_file) # Dump empty charts for future use
-                return charts
-        charts = json.load(chart_file)
-        return charts
-
-    def find_templates_path(self, username):
-        """Find and return the path to the templates file for a given username."""
-        parent_directory = self.ascend_directory(__file__, 2)
-        return os.path.join(parent_directory, "charts", username, "templates")
+        if os.path.exists(chartpath):
+            return sqlite3.connect(chartpath)
+        else:
+            database = sqlite3.connect(chartpath)
+            init_cursor = database.cursor()
+            init_cursor.execute("CREATE TABLE charts(chart text PRIMARY KEY);")
+            init_cursor.execute("CREATE TABLE templates(chart text, column text, " +
+                                "FOREIGN KEY(chart) REFERENCES charts(chart), " + 
+                                "PRIMARY KEY (chart, column));")
+            init_cursor.execute("CREATE TABLE chart_entries(chart text, column " + 
+                                "text, date text, value text, FOREIGN KEY(chart)" +
+                                "REFERENCES templates(chart), FOREIGN KEY(column)" + 
+                                " REFERENCES templates(column), UNIQUE (chart, " + 
+                                "column, date));")
+            init_cursor.commit()
+            init_cursor.close()
+            return database
 
     def find_charts_path(self, username):
         """Find and return the path to the charts file for a given username."""
         parent_directory = self.ascend_directory(__file__, 2)
         current_chart = time.strftime("%Y-%m")
         return os.path.join(parent_directory, "charts", username, current_chart)
-
-    def stock_charts_from_templates(self, chartpath):
-        """Create sticker chart(s) for the current year and month from the 
-        templates given in /charts/templates."""
-        charts = []
-        current_time = datetime.datetime.now()
-        days_in_month = calendar.monthrange(current_time.year, 
-                                            current_time.month)[1]
-        templatepath = os.path.join(os.path.split(chartpath)[0], "templates")
-        try:
-            with open(templatepath) as templates_file:
-                templates = json.load(templates_file)
-        except IOError:
-            raise NonexistentTemplateFile(templatepath)
-        if templates == list(): # Can't return a chart if there are no templates.
-            return templates
-        for template in templates:
-            chart = {}
-            chart["name"] = template["name"]
-            chart["table"] = []
-            for column_name in template["columns"]:
-                column = self.create_column(column_name, days_in_month)
-                chart["table"].append(column)
-            charts.append(chart)
-        return charts
-
-    def create_column(self, column_name, days_in_month):
-        """Create a column given the name of the column and the days in the month
-        for the chart in which che column goes."""
-        column = []
-        column[0] = column_name
-        for day in days_in_month:
-            column.append(None)
-        return column
-
-    def format_table(self, y_x_table):
-        """Format a table whose first coordinate is the Y axis into HTML for 
-        page display."""
-        table_head = "<table>\n"
-        for row in y_x_table:
-            for mark in enumerate(row):
-                if mark[1]:
-                    row[mark[0]] = '\u263A'
-                elif mark[1] is False:
-                    row[mark[0]] = '\\'
-                else:
-                    row[mark[0]] = ' '
-        table_data = "".join(
-            ["<tr>" + "".join(["<td>" + str(mark) + "</td>" for mark in row]) + "</tr>\n" 
-             for row in y_x_table])
-        table_tail = "</table>\n"
-        return table_head + table_data + table_tail
-
-    def x_to_y(self, table):
-        """Convert a two dimensional array whose first coordinate is the X axis
-        to one whose first coordinate is the Y axis."""
-        days_in_month = len(table[0])
-        return [[column[day] for column in table] for day in days_in_month]
             
     def no_chart_could_be_read(self):
         """HTML page response generated when there are no user created charts to
@@ -336,34 +262,6 @@ class application():
             value = tsplit[1]
             query_dict[variable] = value
         return query_dict
-
-    def get_html_chunk(self, chunk_name, html_directory="default"):
-        """
-        Get an html chunk from the top level 'html' directory.
-
-        An html chunk is stored under the name <chunk_name>.html and retrieved
-        through this function by giving the <chunk_name> as an argument. For
-        example if you wanted to get the chunk:
-
-        generic_header.html
-
-        You would pass the string 'generic header' as an argument to 
-        get_html_chunk().
-
-        Note: The optional parameter html_directory has a default string of 
-        'default' which means that you cannot use a local directory with this
-        name as the html_directory.
-        """
-        if html_directory == 'default':
-            html_directory = os.path.join(self.ascend_directory(__file__, 2), "html")
-        chunkpath = os.path.join(html_directory, chunk_name + ".html")
-        try:
-            html_chunk_file = open(chunkpath)
-        except IOError:
-            raise HTMLChunkNonexistent(chunkpath)
-        html_chunk = html_chunk_file.read()
-        return html_chunk
-        
 
     def ascend_directory(self, filepath, steps):
         """Return a filepath which would correspond to ascending n <steps> of 
