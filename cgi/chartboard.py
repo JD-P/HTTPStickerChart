@@ -81,7 +81,7 @@ class application():
         charts = self.load_charts_for_user(environ["REMOTE_USER"])
         for chart in charts:
             if chart["name"] == chartname:
-                return (chart, '200 OK', [('Content-type', 'application/json')])
+                return (json.dumps(chart), '200 OK', [('Content-type', 'application/json')])
         return ("Chart not found.", '404 Not Found', [('Content-type', 'text/plain')])
 
     # POST API
