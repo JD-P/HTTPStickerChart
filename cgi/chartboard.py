@@ -93,8 +93,21 @@ class application():
         cursor.execute("select * from chart_entries where chart=? AND ? < date < ? order by date, column;", 
                        (chartname, month_before, month_after))
         entries = cursor.fetchall()
+        dates = set()
+        for entry in entries:
+            entry_date = entry[2]
+            dates.add(entry_date)
+        rows = []
+        for date in dates:
+            row = []
+            for entry in entries:
+                entry_value = entry[3]
+                entry_date = entry[2]
+                if entry_date == date:
+                    row.append(entry_value)
+            rows.append(row)
         database.close()
-        return (json.dumps(entries), '200 OK', [('Content-type', 'application/json')])
+        return (json.dumps(rows), '200 OK', [('Content-type', 'application/json')])
         
 
     # POST API
