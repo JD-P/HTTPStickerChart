@@ -90,7 +90,7 @@ class application():
         charts = cursor.fetchone()
         if not charts:
             return ("Chart not found.", '404 Not Found', [('Content-type', 'text/plain')])
-        cursor.execute("select * from chart_entries where chart=? AND ? < date < ?", 
+        cursor.execute("select * from chart_entries where chart=? AND ? < date < ? order by date, column;", 
                        (chartname, month_before, month_after))
         entries = cursor.fetchall()
         database.close()
