@@ -79,7 +79,6 @@ class application():
          characters."""
         query_dict = self.parse_query_string(environ["QUERY_STRING"])
         chartname = query_dict["CHARTNAME"]
-        current_month = time.strftime("%Y-%m-%d")
         month_before = (time.strftime("%Y-") + str(int(time.strftime("%m")) - 1) +
                         time.strftime("-%d"))
         month_after = (time.strftime("%Y-") + str(int(time.strftime("%m")) + 1) +
@@ -91,8 +90,8 @@ class application():
         charts = cursor.fetchone()
         if not charts:
             return ("Chart not found.", '404 Not Found', [('Content-type', 'text/plain')])
-        cursor.execute("select * from chart_entries where chart=? AND ? < ? < ?", 
-                       (chartname, month_before, current_month, month_after))
+        cursor.execute("select * from chart_entries where chart=? AND ? < date < ?", 
+                       (chartname, month_before, month_after))
         entries = cursor.fetchall()
         database.close()
         return (json.dumps(entries), '200 OK', [('Content-type', 'application/json')])
@@ -186,12 +185,17 @@ class application():
         post_dict = json.loads(post_dict_json)
         chartname = post_dict["CHARTNAME"]
         row_data = post_dict["ROW_DATA"].split(",")
+        current_month = time.strftime("%Y-%m-%d")
         database = self.load_charts_for_user(environ["REMOTE_USER"])
         cursor = database.cursor()
         cursor.execute("select * from charts where chart=?;", (chartname,))
         charts = cursor.fetchone()
         if not charts:
             return ("Chart not found.", "404 Not Found", [('Content-type', 'text/plain')])
+        cursor.execute("select * from chart_entries where date=?;", (current_month,))
+        previous = cursor.fetchall()
+        if previous:
+            cursor.execute("delete from chart_entries where date=?;", (current_month,))
         cursor.execute("select * from templates where chart=?", (chartname,))
         columns = cursor.fetchall()
         for value in enumerate(row_data):
