@@ -14,7 +14,7 @@ function clicked(row, column) {
   
 function getTest() {
     var xhr = new XMLHttpRequest();
-    xhr.open("GET", "cgi/chartboard.py?action=load_chart&chartname=hello", true);
+    xhr.open("GET", "cgi/chartboard.py?action=load_chart&chartname=test", true);
     xhr.onload = function (e) {
 	if (xhr.readyState === 4) {
 	    if (xhr.status === 200) {
