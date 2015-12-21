@@ -63,3 +63,5 @@ function createColumn(chartname, columnname) {
 	console.error(xhr.statusText);
     }; 
     xhr.send('{"CHARTNAME":' + '"' + chartname + '",' + '"COLUMNNAME":' + '"' + columnname + '"}');}
+
+clicked(0,0);
