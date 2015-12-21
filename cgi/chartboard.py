@@ -24,7 +24,8 @@ class application():
         """
         query_string = self.environ["QUERY_STRING"]
         if query_string == '':
-            response_tuple = self.do_default(self.environ)
+            response_tuple = (open('root/index.html').read(), '200 OK', 
+                              [('Content-type', 'text/html')])
         else:
             query_dict = self.parse_query_string(query_string)
             try:
@@ -238,15 +239,14 @@ class application():
                                 "REFERENCES templates(chart), FOREIGN KEY(column)" + 
                                 " REFERENCES templates(column), UNIQUE (chart, " + 
                                 "column, date));")
-            init_cursor.commit()
+            database.commit()
             init_cursor.close()
             return database
 
     def find_charts_path(self, username):
         """Find and return the path to the charts file for a given username."""
         parent_directory = self.ascend_directory(__file__, 2)
-        current_chart = time.strftime("%Y-%m")
-        return os.path.join(parent_directory, "charts", username, current_chart)
+        return os.path.join(parent_directory, "charts", username, "charts.sqlite")
             
     def no_chart_could_be_read(self):
         """HTML page response generated when there are no user created charts to
