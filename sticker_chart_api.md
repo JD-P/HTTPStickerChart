@@ -4,6 +4,9 @@ Variables in this API are given in the query string. Eg. ?action=load_chart&char
 
 load_chart(chartname) - Load a sticker chart into the chart editors buffer.
 
+get_default_chartname() - Return the default chartname for the application should
+                          load initially.
+
 sign_action(action, timeout, username) - Use HMAC to sign a token authorizing the
 client to take a specific action (API call) until a timeout given in minutes 
 (eg. the argument "15" would mean fifteen minutes from now the token expires) for
