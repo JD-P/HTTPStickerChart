@@ -115,7 +115,7 @@ class application():
         initialization."""
         database = self.load_charts_for_user(environ["REMOTE_USER"])
         cursor = database.cursor()
-        cursor.execute("select * from charts order by id;")
+        cursor.execute("select rowid, chart from charts order by id;")
         charts = cursor.fetchall()
         default_chart = dict(CHARTNAME=charts[0][1])
         return (json.dumps(default_chart), '200 OK', [('Content-type', 'application/json')])
