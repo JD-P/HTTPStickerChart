@@ -109,7 +109,16 @@ class application():
             rows.append(row)
         database.close()
         return (json.dumps(rows), '200 OK', [('Content-type', 'application/json')])
-        
+
+    def do_get_default_chartname(self, environ):
+        """Return the name of the chart which should be loaded at application 
+        initialization."""
+        database = self.load_charts_for_user(environ["REMOTE_USER"])
+        cursor = database.cursor()
+        cursor.execute("select * from charts order by id;")
+        charts = cursor.fetchall()
+        default_chart = dict(CHARTNAME=charts[0][1])
+        return (json.dumps(default_chart), '200 OK', [('Content-type', 'application/json')])
 
     # POST API
 
@@ -230,7 +239,7 @@ class application():
         else:
             database = sqlite3.connect(chartpath)
             init_cursor = database.cursor()
-            init_cursor.execute("CREATE TABLE charts(chart text PRIMARY KEY);")
+            init_cursor.execute("CREATE TABLE charts(chart text PRIMARY KEY;")
             init_cursor.execute("CREATE TABLE templates(chart text, column text, " +
                                 "FOREIGN KEY(chart) REFERENCES charts(chart), " + 
                                 "PRIMARY KEY (chart, column));")
