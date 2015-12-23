@@ -15,13 +15,13 @@ function clicked(row, column) {
       }
     }
   
-function getTest() {
+function getChart(chartname) {
     var xhr = new XMLHttpRequest();
-    xhr.open("GET", "cgi/chartboard.py?action=load_chart&chartname=test", true);
+    xhr.open("GET", "cgi/chartboard.py?action=load_chart&chartname=" + chartname, true);
     xhr.onload = function (e) {
 	if (xhr.readyState === 4) {
 	    if (xhr.status === 200) {
-		console.log(xhr.responseText);
+		return xhr.responseText;
             } else {
 		console.error(xhr.statusText);
             }
