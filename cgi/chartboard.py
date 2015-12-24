@@ -99,8 +99,9 @@ class application():
             entry_date = entry[2]
             dates.add(entry_date)
         rows = []
-        cursor.execute("select * from templates where chart=?;", (chartname,))
-        
+        cursor.execute("select * from templates where chart=? order by rowid;", (chartname,))
+        column_names = [name_list[0] for name_list in cursor.fetchall()]
+        rows.append(column_names)
         for date in dates:
             row = []
             for entry in entries:
