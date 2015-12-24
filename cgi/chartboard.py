@@ -87,7 +87,7 @@ class application():
         database = self.load_charts_for_user(environ["REMOTE_USER"])
         cursor = database.cursor()
         # Test that chart exists
-        cursor.execute("select * from charts where chart=?;", (chartname,))
+        cursor.execute("select * from charts where chart=? order by rowid;", (chartname,))
         charts = cursor.fetchone()
         if not charts:
             return ("Chart not found.", '404 Not Found', [('Content-type', 'text/plain')])
@@ -99,6 +99,8 @@ class application():
             entry_date = entry[2]
             dates.add(entry_date)
         rows = []
+        cursor.execute("select * from templates where chart=?;", (chartname,))
+        
         for date in dates:
             row = []
             for entry in entries:
@@ -115,9 +117,9 @@ class application():
         initialization."""
         database = self.load_charts_for_user(environ["REMOTE_USER"])
         cursor = database.cursor()
-        cursor.execute("select rowid, chart from charts order by id;")
+        cursor.execute("select chart from charts order by rowid;")
         charts = cursor.fetchall()
-        default_chart = dict(CHARTNAME=charts[0][1])
+        default_chart = dict(CHARTNAME=charts[0][0])
         return (json.dumps(default_chart), '200 OK', [('Content-type', 'application/json')])
 
     # POST API
