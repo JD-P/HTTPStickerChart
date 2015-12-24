@@ -1,4 +1,13 @@
 function bootstrap() {
+    var chart = JSON.parse(getChart(getDefaultChartname()));
+    var table = document.getElementsByTagName("table")[0];
+    var name_row = document.createElement("TR");
+    for (column_name in chart[0]) {
+	var data = document.createElement("TD");
+	data.appendChild(document.createTextNode(column_name));
+	name_row.appendChild(data);
+    }
+    table.appendChild(name_row);
 }
 
 function clicked(row, column) {
@@ -83,4 +92,4 @@ function createColumn(chartname, columnname) {
     }; 
     xhr.send('{"CHARTNAME":' + '"' + chartname + '",' + '"COLUMNNAME":' + '"' + columnname + '"}');}
 
-clicked(1,0);
+bootstrap();
