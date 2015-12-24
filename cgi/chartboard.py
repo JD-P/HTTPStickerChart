@@ -208,17 +208,17 @@ class application():
         post_dict = json.loads(post_dict_json)
         chartname = post_dict["CHARTNAME"]
         row_data = post_dict["ROW_DATA"].split(",")
-        current_month = time.strftime("%Y-%m-%d")
+        current_date = time.strftime("%Y-%m-%d")
         database = self.load_charts_for_user(environ["REMOTE_USER"])
         cursor = database.cursor()
         cursor.execute("select * from charts where chart=?;", (chartname,))
         charts = cursor.fetchone()
         if not charts:
             return ("Chart not found.", "404 Not Found", [('Content-type', 'text/plain')])
-        cursor.execute("select * from chart_entries where date=?;", (current_month,))
+        cursor.execute("select * from chart_entries where date=?;", (current_date,))
         previous = cursor.fetchall()
         if previous:
-            cursor.execute("delete from chart_entries where date=?;", (current_month,))
+            cursor.execute("delete from chart_entries where date=?;", (current_date,))
         cursor.execute("select * from templates where chart=?", (chartname,))
         columns = cursor.fetchall()
         for value in enumerate(row_data):
