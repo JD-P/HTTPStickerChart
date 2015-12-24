@@ -72,12 +72,12 @@ class application():
         The chart is returned as JSON of the following form:
 
         {name:<CHARTNAME>,
-         table:<TWO DIMENSIONAL ARRAY, WIDTH THEN HEIGHT.>}
+         table:<TWO DIMENSIONAL ARRAY, HEIGHT THEN WIDTH.>}
 
-         The two dimensional array has columns as its first index and the cells
-         for each column-row as its second. The first cell always contains the
-         columns name, which is no more than 25 alphanumeric dash and underscore
-         characters."""
+         The two dimensional array has rows as its first index and the cells
+         for each row as its second. The first row always contains the names of
+         the columns, which are no more than 25 alphanumeric dash and underscore
+         characters each."""
         query_dict = self.parse_query_string(environ["QUERY_STRING"])
         chartname = query_dict["CHARTNAME"]
         month_before = (time.strftime("%Y-") + str(int(time.strftime("%m")) - 1) +
